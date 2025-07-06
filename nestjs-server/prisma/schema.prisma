@@ -15,7 +15,7 @@ model User {
   password String
 
   displayName String
-  pictureS String?
+  picture String?
 
   role UserRole @default(REGULAR)
 
