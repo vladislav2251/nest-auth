@@ -39,6 +39,7 @@ export class AuthService {
 
             req.session.save(err => {
                 if (err) {
+                    console.log(err)
                     return reject(
                         new InternalServerErrorException(
                             'Failed to create session. Please check session configuration.'
