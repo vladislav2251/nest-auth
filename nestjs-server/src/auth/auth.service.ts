@@ -1,4 +1,10 @@
-import { ConflictException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+    ConflictException,
+    Injectable,
+    InternalServerErrorException,
+    NotFoundException,
+    UnauthorizedException
+} from '@nestjs/common';
 import { RegisterDto } from './dto/register.dto';
 import { UserService } from '@/user/user.service';
 import { AuthMethod, User } from 'prisma/__generated__';
@@ -12,11 +18,11 @@ import { ProviderService } from './provider/provider.service';
 @Injectable()
 export class AuthService {
     public constructor(
-            private readonly userService: UserService,
-            private readonly configService: ConfigService,
-            private readonly prismaService: PrismaService,
-            private readonly providerService: ProviderService
-        ) {}
+        private readonly userService: UserService,
+        private readonly configService: ConfigService,
+        private readonly prismaService: PrismaService,
+        private readonly providerService: ProviderService
+    ) {}
 
     public async register(req: Request, dto: RegisterDto) {
         const isExists = await this.userService.findByEmail(dto.email);
@@ -40,23 +46,23 @@ export class AuthService {
     }
 
     public async login(req: Request, dto: LoginDto) {
-        const user = await this.userService.findByEmail(dto.email)
+        const user = await this.userService.findByEmail(dto.email);
 
         if (!user || !user.password) {
             throw new NotFoundException(
-                'User not found or registration incomplete'
-            )
+                'User not found or registration incomplete.'
+            );
         }
 
-        const isValidPassword = await verify(user.password, dto.password)
+        const isValidPassword = await verify(user.password, dto.password);
 
         if (!isValidPassword) {
             throw new UnauthorizedException(
-                'Invalid password. Please try again or use the password recovery option'
-            )
+                'Invalid password. Please try again or use the password recovery option.'
+            );
         }
 
-        return this.saveSession(req, user)
+        return this.saveSession(req, user);
     }
 
     public async extractProfileFromCode(
@@ -67,15 +73,26 @@ export class AuthService {
         const providerInstance = this.providerService.findByService(provider);
 
         if (!providerInstance) {
-            throw new NotFoundException('Провайдер не найден');
+            throw new NotFoundException('Provider not found.');
         }
 
         const profile = await providerInstance.findUserByCode(code);
 
-        const { email, name, picture, provider: providerName, id, access_token, refresh_token, expires_at } = profile;
+        const {
+            email,
+            name,
+            picture,
+            provider: providerName,
+            id,
+            access_token,
+            refresh_token,
+            expires_at
+        } = profile;
 
         if (!email || !name || !providerName) {
-            throw new InternalServerErrorException('Профиль не содержит обязательных данных');
+            throw new InternalServerErrorException(
+                'The profile is missing required fields.'
+            );
         }
 
         const account = await this.prismaService.account.findFirst({
@@ -102,7 +119,9 @@ export class AuthService {
 
         if (!account) {
             if (!expires_at) {
-                throw new InternalServerErrorException('Нет времени истечения access токена');
+                throw new InternalServerErrorException(
+                    'Missing access token expiration time.'
+                );
             }
 
             await this.prismaService.account.create({
@@ -120,23 +139,23 @@ export class AuthService {
         return this.saveSession(req, user);
     }
 
-
-    public async logout(req: Request, res: Response):Promise<void> {
+    public async logout(req: Request, res: Response): Promise<void> {
         return new Promise((resolve, reject) => {
             req.session.destroy(err => {
-                if(err) {
+                if (err) {
                     return reject(
                         new InternalServerErrorException(
-                            'не удаолось завершить сессии возможно возникла пробоеа на сервере или сессия уже была хавершина'
+                            'Failed to destroy session. It may have already been terminated or a server error occurred.'
                         )
-                    )
+                    );
                 }
+
                 res.clearCookie(
                     this.configService.getOrThrow<string>('SESSION_NAME')
-                )
-                resolve()
-            })
-        })
+                );
+                resolve();
+            });
+        });
     }
 
     private async saveSession(req: Request, user: User) {
@@ -145,7 +164,7 @@ export class AuthService {
 
             req.session.save(err => {
                 if (err) {
-                    console.log(err)
+                    console.log(err);
                     return reject(
                         new InternalServerErrorException(
                             'Failed to create session. Please check session configuration.'
