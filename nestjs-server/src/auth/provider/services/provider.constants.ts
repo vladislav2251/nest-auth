@@ -5,7 +5,7 @@ export const ProviderOptionSymbol = Symbol()
 
 export type TypeOptions = {
     baseUrl: string
-    servces: BaseOAuthService[]
+    services: BaseOAuthService[]
 }
 
 export type TypeAsyncOptions = Pick<ModuleMetadata, 'imports'> &
