@@ -92,7 +92,7 @@ export class BaseOAuthService {
         return `${this.BASE_URL}/auth/oauth/callback/${this.options.name}`
     }
 
-    set BaseUrl(value: string) {
+    set baseUrl(value: string) {
         this.BASE_URL = value
     }
 
