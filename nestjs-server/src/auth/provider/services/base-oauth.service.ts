@@ -1,10 +1,14 @@
-import { BadRequestException, Injectable, Post, UnauthorizedException } from "@nestjs/common";
-import { TypeBaseProviderOptions } from "./types/base-provider.options.types";
-import { TypeUserInfo } from "./types/user-info.types";
+import {
+    BadRequestException,
+    Injectable,
+    UnauthorizedException
+} from '@nestjs/common';
+import { TypeBaseProviderOptions } from './types/base-provider.options.types';
+import { TypeUserInfo } from './types/user-info.types';
 
 @Injectable()
 export class BaseOAuthService {
-    public BASE_URL: string
+    public BASE_URL: string;
 
     public constructor(private readonly options: TypeBaseProviderOptions) {}
 
@@ -12,103 +16,93 @@ export class BaseOAuthService {
         return {
             ...data,
             provider: this.options.name
-        }
+        };
     }
 
-    public getAuthUrl() {
+    public getAuthUrl(): string {
         const query = new URLSearchParams({
             response_type: 'code',
-            client_id: this.options.cliend_id,
+            client_id: this.options.client_id,
             redirect_uri: this.getRedirectUrl(),
-            scopr: (this.options.scopes ?? []).join(' '),
+            scope: (this.options.scopes ?? []).join(' '),
             access_type: 'offline',
-            promt: 'select_account'
-        })
+            prompt: 'select_account'
+        });
 
-        return `${this.options.authorize_url}?${query}`
+        return `${this.options.authorize_url}?${query.toString()}`;
     }
 
     public async findUserByCode(code: string): Promise<TypeUserInfo> {
-        const cliend_id = this.options.cliend_id
-        const client_secret = this.options.client_secret
-
         const tokenQuery = new URLSearchParams({
-            cliend_id,
-            client_secret,
+            client_id: this.options.client_id,
+            client_secret: this.options.client_secret,
             redirect_uri: this.getRedirectUrl(),
-            grand_type: 'authorization_code'
-        })
+            grant_type: 'authorization_code',
+            code
+        });
 
         const tokenRequest = await fetch(this.options.access_url, {
             method: 'POST',
             body: tokenQuery,
             headers: {
-                'Content-type': 'application/x-www-form-urlencoded',
+                'Content-Type': 'application/x-www-form-urlencoded',
                 Accept: 'application/json'
             }
-        })
+        });
 
-        const tokenResponse = await tokenRequest.json()
+        const tokenResponse = await tokenRequest.json();
 
-        if(!tokenResponse.ok) {
+        if (tokenRequest.status !== 200 || !tokenResponse.access_token) {
             throw new BadRequestException(
-                `Не удалось получить пользователя с ${this.options.profile_url}. Проверьте правильность токена доступа`
-            )
-        }
-
-        if(!tokenResponse.access_token) {
-            throw new BadRequestException(
-                `Нет токета с ${this.options.access_url}. Убедитесь что код авторизации действителен`
-            )
+                `Не удалось получить токен с ${this.options.access_url}. Проверьте правильность client_id / client_secret или кода авторизации.`
+            );
         }
 
         const userRequest = await fetch(this.options.profile_url, {
             headers: {
                 Authorization: `Bearer ${tokenResponse.access_token}`
             }
-        })
+        });
 
-        if(!userRequest.ok) {
-
+        if (!userRequest.ok) {
             throw new UnauthorizedException(
-                `Не удалось получить пользователя с ${this.options.profile_url}. Проверьте правильность токена доступаю`
-            )
+                `Не удалось получить данные пользователя с ${this.options.profile_url}.`
+            );
         }
 
-        const user = await userRequest.json()
-        const userData = await this.extractUserInfo(user)
+        const user = await userRequest.json();
+        const userData = await this.extractUserInfo(user);
 
         return {
             ...userData,
             access_token: tokenResponse.access_token,
             refresh_token: tokenResponse.refresh_token,
-            expires_at: tokenResponse.expires_at || tokenResponse.expires_in,
+            expires_at: tokenResponse.expires_at ?? tokenResponse.expires_in,
             provider: this.options.name
-        }
-
+        };
     }
 
-    public getRedirectUrl() {
-        return `${this.BASE_URL}/auth/oauth/callback/${this.options.name}`
+    public getRedirectUrl(): string {
+        return `${this.BASE_URL}/auth/oauth/callback/${this.options.name}`;
     }
 
     set baseUrl(value: string) {
-        this.BASE_URL = value
+        this.BASE_URL = value;
     }
 
-    get name() {
-        return this.options.name
+    get name(): string {
+        return this.options.name;
     }
 
-    get access_url() {
-        return this.options.access_url
+    get access_url(): string {
+        return this.options.access_url;
     }
 
-    get profile_url() {
-        return this.options.profile_url
+    get profile_url(): string {
+        return this.options.profile_url;
     }
 
-    get scopes() {
-        return this.options.scopes
+    get scopes(): string[] {
+        return this.options.scopes;
     }
 }
